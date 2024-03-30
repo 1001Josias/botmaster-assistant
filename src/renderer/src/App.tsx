@@ -1,14 +1,18 @@
-import botMasterLogo from './assets/botmaster.svg'
+import { useState } from 'react'
+
+import { ThemeProvider } from './components/ThemeProvider/theme-provider'
+import Welcome from './components/Welcome'
 
 function App(): JSX.Element {
+  const [welcome, setWelcome] = useState(true)
+  setTimeout(() => {
+    setWelcome(true)
+  }, 3000)
+
   return (
-    <>
-      <img alt="logo" className="logo" src={botMasterLogo} />
-      <div className="text">
-        <span className="botmaster">BotMaster</span> Assistant
-      </div>
-      <div className="creator">Developed by Josias Junior</div>
-    </>
+    <ThemeProvider defaultTheme="dark" storageKey="botmaster-ui-theme">
+      {welcome ? <Welcome /> : null}
+    </ThemeProvider>
   )
 }
 
