@@ -37,7 +37,7 @@ export const columns: ColumnDef<Automation>[] = [
         <Button
           variant="ghost"
           size={'icon'}
-          onClick={() => window.electron.ipcRenderer.send('run-robot', row.original)}
+          onClick={() => window.electron.ipcRenderer.send('run-process', row.original)}
           aria-label="name"
           className="rounded-full"
         >

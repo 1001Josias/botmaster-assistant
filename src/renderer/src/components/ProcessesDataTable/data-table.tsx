@@ -11,15 +11,15 @@ import {
   TableRow
 } from '@renderer/components/Table'
 
-interface RobotsDataTableProps<TData, TValue> {
+interface ProcessesDataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
 }
 
-export function RobotsDataTable<TData, TValue>({
+export function ProcessesDataTable<TData, TValue>({
   columns,
   data
-}: RobotsDataTableProps<TData, TValue>): React.ReactElement {
+}: ProcessesDataTableProps<TData, TValue>): React.ReactElement {
   const table = useReactTable({
     data,
     columns,
