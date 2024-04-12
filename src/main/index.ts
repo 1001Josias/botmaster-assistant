@@ -2,6 +2,8 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/botmaster.png?asset'
+import { getProcesses } from './utils'
+const processes = getProcesses()
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -23,6 +25,10 @@ function createWindow(): void {
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
+  })
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.webContents.send('process-list', processes)
   })
 
   // HMR for renderer base on electron-vite cli.
