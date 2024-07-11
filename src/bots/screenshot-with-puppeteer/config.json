@@ -1,0 +1,6 @@
+{
+  "name": "screnshot-with-puppeteer",
+  "version": "1.0.0",
+  "description": "This is a simple Google search automation using Puppeteer",
+  "headless": false
+}
