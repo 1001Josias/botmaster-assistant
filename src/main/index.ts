@@ -1,17 +1,32 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 import path from 'path'
 import pie from 'puppeteer-in-electron'
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-
 import icon from '../../resources/botmaster.png?asset'
 import { getProcesses } from './utils'
-const processes = getProcesses()
+import { BotMasterUtilities } from '../types'
+import puppeteer from 'puppeteer-extra'
 
-function createWindow(): void {
+const processes = getProcesses()
+const webSocketPort = 9222
+
+// app.commandLine.appendSwitch('headless', 'new')
+// app.commandLine.appendSwitch('ignore-gpu-blacklist')
+
+app.commandLine.appendSwitch('remote-allow-origins', `http://127.0.0.1:${webSocketPort}`)
+
+function createWindow(): BrowserWindow {
+  const headlessMode = ['new']
+  const hasSwitchHeadless = app.commandLine.hasSwitch('headless')
+  const headless = app.commandLine.getSwitchValue('headless')
+  const isHeadless = hasSwitchHeadless && headlessMode.includes(headless)
+
   const mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
-    show: false,
+    show: true,
+    // frame: false,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
@@ -21,7 +36,7 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+    !isHeadless && mainWindow.show()
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -40,6 +55,8 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
   }
+
+  return mainWindow
 }
 
 // This method will be called when Electron has finished
@@ -47,10 +64,13 @@ function createWindow(): void {
 // Some APIs can only be used after this event occurs.
 
 pie
-  .initialize(app)
+  .initialize(app, webSocketPort)
   .then(async () => {
     await app.whenReady()
     createWindow()
+
+    // http://127.0.0.1:9222/json
+    // http://localhost:9222/json/version
 
     // Set app user model id for windows
     electronApp.setAppUserModelId('com.electron')
@@ -63,21 +83,44 @@ pie
     })
 
     ipcMain.on('run-process', async (event, process) => {
+      const window = new BrowserWindow({
+        show: false,
+        title: 'BotMaster Process'
+        // fullscreen: false,
+      })
+      let processFinalizationMessage
       try {
-        console.log(`${process.name} started`)
-        const { default: runRobot } = await import(process.path)
-        await runRobot()
-        const successLog = `${process.name} completed!`
-        event.reply(`${process.name}-finished`, successLog)
-        console.log(successLog)
+        // @ts-ignore
+        const browser = await pie.connect(app, puppeteer)
+
+        const page = await pie.getPage(browser, window)
+
+        window.webContents.debugger.attach('1.3')
+        const mainWebContents =
+          await window.webContents.debugger.sendCommand('Target.getTargetInfo')
+        window.webContents.debugger.detach()
+        console.log(
+          `http://127.0.0.1:9222/devtools/inspector.html?ws=127.0.0.1:9222/devtools/page/${mainWebContents.targetInfo.targetId}`
+        )
+
+        // @ts-ignore
+        const botMaster = new BotMasterUtilities(page)
+
+        const { default: runProcess } = await import(process.path)
+        console.log(`${process.key} started`)
+        await runProcess(botMaster)
+        processFinalizationMessage = `${process.key} completed`
       } catch (error: unknown) {
-        const failureLog = `${process.name} failed with message:`
-        console.error(failureLog)
+        processFinalizationMessage = `${process.key} failed with message:`
         console.error(error)
         event.reply(
-          `${process.name}-finished`,
-          `${failureLog} ${error instanceof Error ? error.message : error}`
+          `${process.key}-finished`,
+          `${processFinalizationMessage} ${error instanceof Error ? error.message : error}`
         )
+      } finally {
+        event.reply(`${process.key}-finished`, processFinalizationMessage)
+        console.log(processFinalizationMessage)
+        window?.destroy()
       }
     })
 
